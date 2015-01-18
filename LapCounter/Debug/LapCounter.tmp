@@ -1,0 +1,26 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.1.57</VERSION>
+ <DEVICE>"ATmega8"</DEVICE>
+ <WORKING_DIR>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>C:\Program Files (x86)\Atmel\Atmel Toolchain\AVR Assembler\Native\2.1.1175\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>C:\Program Files (x86)\Atmel\Atmel Toolchain\AVR Assembler\Native\2.1.1175\avrassembler\Include\m8def.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\Debug/LapCounter.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>LapCounter.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>LapCounter.map</FILE>
+  <FILE>LapCounter.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <loop><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>39</LINE></loop>
+ </LABELS>
+</ASSEMBLER_INFO>
