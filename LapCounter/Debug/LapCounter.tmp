@@ -21,6 +21,9 @@
   <FILE>LapCounter.lss</FILE>
  </OUTPUT_FILES>
  <LABELS>
-  <loop><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>39</LINE></loop>
+  <reset_handler><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>53</LINE></reset_handler>
+  <loop><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>114</LINE></loop>
+  <test1><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>174</LINE></test1>
+  <test2><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>179</LINE></test2>
  </LABELS>
 </ASSEMBLER_INFO>

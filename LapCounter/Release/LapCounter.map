@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.1.57  C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm Sun Jan 18 00:37:29 2015
+AVRASM ver. 2.1.57  C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm Thu Feb 05 00:53:18 2015
 
 
 EQU  SIGNATURE_000 0000001e
@@ -507,4 +507,16 @@ EQU  ACIaddr      00000010
 EQU  TWIaddr      00000011
 EQU  SPMRaddr     00000012
 EQU  INT_VECTORS_SIZE 00000013
-CSEG loop         00000004
+DEF  temp         r16
+DEF  flag         r17
+DEF  track_counter0 r18
+DEF  track_counter1 r19
+DEF  temp_in      r20
+EQU  PIN_OG       00000001
+EQU  PIN_R_CLK    00000002
+EQU  PIN_S_CLK    00000005
+EQU  PIN_SER      00000003
+CSEG reset_handler 00000001
+CSEG transmitToShiftReg 00000027
+CSEG outputToShiftReg 0000002b
+CSEG loop         00000015
