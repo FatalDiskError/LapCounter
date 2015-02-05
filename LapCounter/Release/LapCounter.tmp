@@ -21,9 +21,22 @@
   <FILE>LapCounter.lss</FILE>
  </OUTPUT_FILES>
  <LABELS>
-  <reset_handler><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>53</LINE></reset_handler>
-  <transmitToShiftReg><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>221</LINE></transmitToShiftReg>
-  <outputToShiftReg><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>231</LINE></outputToShiftReg>
-  <loop><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>119</LINE></loop>
+  <reset_handler><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>35</LINE></reset_handler>
+  <resetCounter><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>175</LINE></resetCounter>
+  <printDigit><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>210</LINE></printDigit>
+  <loop><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>102</LINE></loop>
+  <incLabCouter0><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>131</LINE></incLabCouter0>
+  <incLabCouter1><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>153</LINE></incLabCouter1>
+  <resetAndSkipOutput><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>127</LINE></resetAndSkipOutput>
+  <output><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>186</LINE></output>
+  <exitIncLabCouter0><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>150</LINE></exitIncLabCouter0>
+  <exitIncLabCouter1><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>172</LINE></exitIncLabCouter1>
+  <wait><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>253</LINE></wait>
+  <digits><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>280</LINE></digits>
+  <transmitToShiftReg><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>231</LINE></transmitToShiftReg>
+  <outputToShiftReg><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>241</LINE></outputToShiftReg>
+  <waitInner1><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>255</LINE></waitInner1>
+  <waitInner2><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>257</LINE></waitInner2>
+  <waitInner3><FILE>C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm</FILE><LINE>259</LINE></waitInner3>
  </LABELS>
 </ASSEMBLER_INFO>

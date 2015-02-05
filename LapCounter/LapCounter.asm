@@ -5,36 +5,18 @@
  *   Author: FatalDiskError
  */ 
 
-/*
-start:
-	nop
-	ldi R16, 0xff
-	sts PORTE_DIR, r16
-
-	ldi r17, 0x80
-output:
-	sts PORTE_OUT, r17
-	rol r17
-
-	ldi r16, 0x00
-delay:
-	ldi r18, 0x00
-delay1:
-	inc r18
-	brne delay1
-	inc r16
-	brne delay
-	break
-	rjmp output
-*/
-
 .include "m8def.inc"
 
+.def zero = r1
 .def temp = r16
-.def flag = r17
-.def track_counter0 = r18
-.def track_counter1 = r19
-.def temp_in = r20
+.def digitToPrint = r17
+.def digitByte = r18
+.def controller_input = r19
+.def lab_counter0_ones = r20
+.def lab_counter0_tens = r21
+.def lab_counter1_ones = r22
+.def lab_counter1_tens = r23
+.def flag = r24
 
 .equ PIN_OG		= PB1
 .equ PIN_R_CLK	= PB2
@@ -58,12 +40,14 @@ reset_handler:
 	ldi temp, HIGH(RAMEND)
 	out SPH, temp
 
+	ldi flag, 0
+
 	// -------------------------------------
 	; set B as output
 	; set OG, R_CLK, S_CLK, SER as output
 	; set PB4 as input
 	ldi temp, 0xFF
-	//cbr temp, PB4 ; (1<<PB4)
+	//cbr temp, PB4 ; (1<<PB4) // does not work somehow
 	out DDRB, temp
 
 	// -------------------------------------
@@ -95,9 +79,8 @@ reset_handler:
 	out DDRD, temp
 
 	// -------------------------------------
-	; set track counters to 0
-	ldi track_counter0, 0x00
-	ldi track_counter1, 0x00
+	; reset counter
+	rcall resetCounter
 
 /*
 	// -------------------------------------
@@ -111,93 +94,139 @@ reset_handler:
 	sei
 */
 
+	// -------------------------------------
 	; all segments & dot on
-	ldi temp, 0b11111111
-	rcall transmitToShiftReg
-	rcall outputToShiftReg
+	ldi digitToPrint, 0
+	rcall printDigit
 
 loop:
-	/*
-	; check if flag == 0xff => Z=1 => branch to equal
-	cpi flag, 0xff
-	breq output
-	*/
-
-	in temp_in, PINC
-	cpi temp_in, 0b00111111
+	// -------------------------------------
+	; ATmega8 has only 6 input pins for port c
+	; if (controller_input == 0b00111111) => Z=1 => branch to loop
+	in controller_input, PINC
+	cpi controller_input, 0b00111111
 	breq loop
 
-	/*
-		  (2)
-		|--b--|  0 = on
-		c     a  1 = off
-		|--f--|
-		h     e
-		|--g--|  d
+	// -------------------------------------
+	; increase lap counts
+	sbrs controller_input, PC0
+	rcall incLabCouter0
 
-		    12
-		oooo++000
-		#########
-		# 1 # 2 #
-		#########
-		oooo00000
-		
-		7 6 5 4 3 2 1 0
-		h g f e d c b a
+	sbrs controller_input, PC1
+	rcall incLabCouter1
 
-		0: hg_e_cba : 0b00101000
-		1: ___e___a : 0b11101110
-		2: hgf___ba : 0b00011100
-		3: _gfe__ba : 0b10001100
-		4: __fe_c_a : 0b11001010
-		5: _gfe_cb_ : 0b10001001
-		6: hgfe_cb_ : 0b00001001
-		7: ___e__ba : 0b11101100
-		8: hgfe_cba : 0b00001000
-		9: _gfe_cba : 0b10001000
-		.: ____d___ : 0b11110111
+	sbrs controller_input, PC2
+	nop
 
-	/** /
-	sbrs temp_in, PC0
-	ldi temp, 0b00101000 // 0
-	sbrs temp_in, PC1
-	ldi temp, 0b11101110 // 1
-	sbrs temp_in, PC2
-	ldi temp, 0b00011100 // 2
-	sbrs temp_in, PC3
-	ldi temp, 0b10001100 // 3
-	sbrs temp_in, PC4
-	ldi temp, 0b11001010 // 4
-	sbrs temp_in, PC5
-	ldi temp, 0b10001001 // 5
-	/**/
+	sbrs controller_input, PC3
+	rjmp resetAndSkipOutput
 
-	/** /
-	sbrs temp_in, PC0
-	ldi temp, 0b00001001 // 6
-	sbrs temp_in, PC1
-	ldi temp, 0b11101100 // 7
-	sbrs temp_in, PC2
-	ldi temp, 0b00001000 // 8
-	sbrs temp_in, PC3
-	ldi temp, 0b10001000 // 9
-	sbrs temp_in, PC4
-	ldi temp, 0b11110111 // .
-	sbrs temp_in, PC5
-	ldi temp, 0b00000000 // all
-	/**/
+	rcall output
+	rjmp loop
 
-	/*
-	sbrs temp_in, PC6
-	ldi temp, 0b10101010
-	sbrc temp_in, PC7
-	ldi temp, 0b10101010
-	*/
+resetAndSkipOutput:
+	rcall resetCounter
+	rjmp loop
+
+incLabCouter0:
+	; increase ones
+	inc lab_counter0_ones
+	cpi lab_counter0_ones, 10
+
+	; if counter != 10
+	brne exitIncLabCouter0
+	; else
+	ldi lab_counter0_ones, 0
+
+	; increase tens
+	inc lab_counter0_tens
+	cpi lab_counter0_tens, 10
+
+	; if counter != 10
+	brne exitIncLabCouter0
+	; else
+	ldi lab_counter0_tens, 0
+
+exitIncLabCouter0:
+	ret
+
+incLabCouter1:
+	; increase ones
+	inc lab_counter1_ones
+	cpi lab_counter1_ones, 10
+
+	; if counter != 10
+	brne exitIncLabCouter1
+	; else
+	ldi lab_counter1_ones, 0
+
+	; increase tens
+	inc lab_counter1_tens
+	cpi lab_counter1_tens, 10
+
+	; if counter != 10
+	brne exitIncLabCouter1
+	; else
+	ldi lab_counter1_tens, 0
+
+exitIncLabCouter1:
+	ret
+
+resetCounter:
+	; set lab counters to 0
+	ldi lab_counter0_ones, 1
+	ldi lab_counter0_tens, 2
+	ldi lab_counter1_ones, 3
+	ldi lab_counter1_tens, 4
+
+	sbr flag, 1
+	rcall output
+	ret
+
+output:
+	mov digitToPrint, lab_counter1_tens
+	rcall printDigit
+	sbrs flag, 0
+	rcall wait
+
+	mov digitToPrint, lab_counter1_ones
+	rcall printDigit
+	sbrs flag, 0
+	rcall wait
+
+	mov digitToPrint, lab_counter0_tens
+	rcall printDigit
+	sbrs flag, 0
+	rcall wait
+
+	mov digitToPrint, lab_counter0_ones
+	rcall printDigit
+	sbrs flag, 0
+	rcall wait
+
+	cbr flag, 1
+	ret
+
+printDigit:
+	// -------------------------------------
+	; set z-pointer to beginning of digit-table
+	; word-based, therefor byte-adress "digits" is multiplied by 2
+	ldi ZL, LOW(digits * 2)
+	ldi ZH, HIGH(digits * 2)
+
+	mov temp, digitToPrint      ; die wortweise Adressierung der Tabelle
+	add temp, digitToPrint      ; berücksichtigen
+
+	add ZL, temp         ; und ausgehend vom Tabellenanfang
+	adc ZH, zero          ; die Adresse des Code Bytes berechnen
+
+	lpm                       ; dieses Code Byte in das Register r0 laden
+	mov digitByte, r0
 
 	rcall transmitToShiftReg
 	rcall outputToShiftReg
 
-	rjmp loop
+	ret
 
 transmitToShiftReg:
 	; check if prev transmission is done
@@ -205,7 +234,7 @@ transmitToShiftReg:
 	rjmp transmitToShiftReg
 
 	; write data to shift reg
-	out SPDR, temp
+	out SPDR, digitByte
 
 	ret
 
@@ -219,18 +248,77 @@ outputToShiftReg:
 
 	ret
 
-/*
-output:
-	ldi flag, 0x00
-	rjmp loop
+// brne: branch if z==0
+// breq: branch if z==1
+wait:
+	ldi r25, 100
+waitInner1:
+	ldi r26, 100
+waitInner2:
+	ldi r27, 100
+waitInner3:
+	dec r27
+	brne waitInner3
+	dec r26
+	brne waitInner2
+	dec r25
+	brne waitInner1
+	ret
 
+/*
 int0_handler:
 	ldi flag, 0xff
-	inc track_counter0
+	inc lab_counter0
 	reti
 
 int1_handler:
 	ldi flag, 0xff
-	inc track_counter1
+	inc lab_counter1
 	reti
 */
+
+digits:
+	/*
+		  (1)         (2)
+		|--a--|     |--a--|
+		f     b     f     b
+		|--g--|     |--g--|
+		e     c     e     c
+		|--d--|  h  |--d--|  h
+
+		         1 2
+		 o o o o + + 0 0 0
+		###################
+		#  (1)  ###  (2)  #
+		###################
+		 o o o o 0 0 0 0 0
+		
+		7 6 5 4 3 2 1 0
+		e d g c h f a b
+
+		0 = on
+		1 = off
+
+		0: ed_c_fab : 0b00101000
+		1: ___c___b : 0b11101110
+		2: edg___ab : 0b00011100
+		3: _dgc__ab : 0b10001100
+		4: __gc_f_b : 0b11001010
+		5: _dgc_fa_ : 0b10001001
+		6: edgc_fa_ : 0b00001001
+		7: ___c__ab : 0b11101100
+		8: edgc_fab : 0b00001000
+		9: _dgc_fab : 0b10001000
+		.: ____h___ : 0b11110111
+	*/
+	.db 0b00101000 // 0
+	.db 0b11101110 // 1
+	.db 0b00011100 // 2
+	.db 0b10001100 // 3
+	.db 0b11001010 // 4
+	.db 0b10001001 // 5
+	.db 0b00001001 // 6
+	.db 0b11101100 // 7
+	.db 0b00001000 // 8
+	.db 0b10001000 // 9
+	.db 0b11110111 // .

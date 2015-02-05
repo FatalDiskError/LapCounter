@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.1.57  C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm Thu Feb 05 00:53:18 2015
+AVRASM ver. 2.1.57  C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm Fri Feb 06 00:33:51 2015
 
 
 EQU  SIGNATURE_000 0000001e
@@ -507,16 +507,34 @@ EQU  ACIaddr      00000010
 EQU  TWIaddr      00000011
 EQU  SPMRaddr     00000012
 EQU  INT_VECTORS_SIZE 00000013
+DEF  zero         r1
 DEF  temp         r16
-DEF  flag         r17
-DEF  track_counter0 r18
-DEF  track_counter1 r19
-DEF  temp_in      r20
+DEF  digitToPrint r17
+DEF  digitByte    r18
+DEF  controller_input r19
+DEF  lab_counter0_ones r20
+DEF  lab_counter0_tens r21
+DEF  lab_counter1_ones r22
+DEF  lab_counter1_tens r23
+DEF  flag         r24
 EQU  PIN_OG       00000001
 EQU  PIN_R_CLK    00000002
 EQU  PIN_S_CLK    00000005
 EQU  PIN_SER      00000003
 CSEG reset_handler 00000001
-CSEG transmitToShiftReg 00000027
-CSEG outputToShiftReg 0000002b
-CSEG loop         00000015
+CSEG resetCounter 00000035
+CSEG printDigit   0000004e
+CSEG loop         00000014
+CSEG incLabCouter0 00000023
+CSEG incLabCouter1 0000002c
+CSEG resetAndSkipOutput 00000021
+CSEG output       0000003c
+CSEG exitIncLabCouter0 0000002b
+CSEG exitIncLabCouter1 00000034
+CSEG wait         00000062
+CSEG digits       0000006c
+CSEG transmitToShiftReg 00000059
+CSEG outputToShiftReg 0000005d
+CSEG waitInner1   00000063
+CSEG waitInner2   00000064
+CSEG waitInner3   00000065

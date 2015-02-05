@@ -1,10 +1,8 @@
 
-AVRASM ver. 2.1.57  C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm Thu Feb 05 00:53:18 2015
+AVRASM ver. 2.1.57  C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm Fri Feb 06 00:33:51 2015
 
 [builtin](2): Including file 'C:\Program Files (x86)\Atmel\Atmel Toolchain\AVR Assembler\Native\2.1.1175\avrassembler\Include\m8def.inc'
-C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(31): Including file 'C:\Program Files (x86)\Atmel\Atmel Toolchain\AVR Assembler\Native\2.1.1175\avrassembler\Include\m8def.inc'
-C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(179): warning: '/*' in comment 
-C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warning: '/*' in comment 
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(8): Including file 'C:\Program Files (x86)\Atmel\Atmel Toolchain\AVR Assembler\Native\2.1.1175\avrassembler\Include\m8def.inc'
                  
                  /*
                  
@@ -752,29 +750,6 @@ C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warn
                   *   Author: FatalDiskError
                   */ 
                  
-                 /*
-                 start:
-                 	nop
-                 	ldi R16, 0xff
-                 	sts PORTE_DIR, r16
-                 
-                 	ldi r17, 0x80
-                 output:
-                 	sts PORTE_OUT, r17
-                 	rol r17
-                 
-                 	ldi r16, 0x00
-                 delay:
-                 	ldi r18, 0x00
-                 delay1:
-                 	inc r18
-                 	brne delay1
-                 	inc r16
-                 	brne delay
-                 	break
-                 	rjmp output
-                 */
-                 
                  .include "m8def.inc"
                  
                  ;***** Created: 2011-02-09 12:03 ******* Source: ATmega8.xml *************
@@ -820,11 +795,16 @@ C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warn
                  
                  ; ***** END OF FILE ******************************************************
                  
+                 .def zero = r1
                  .def temp = r16
-                 .def flag = r17
-                 .def track_counter0 = r18
-                 .def track_counter1 = r19
-                 .def temp_in = r20
+                 .def digitToPrint = r17
+                 .def digitByte = r18
+                 .def controller_input = r19
+                 .def lab_counter0_ones = r20
+                 .def lab_counter0_tens = r21
+                 .def lab_counter1_ones = r22
+                 .def lab_counter1_tens = r23
+                 .def flag = r24
                  
                  .equ PIN_OG		= PB1
                  .equ PIN_R_CLK	= PB2
@@ -848,13 +828,15 @@ C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warn
 000003 e004      	ldi temp, HIGH(RAMEND)
 000004 bf0e      	out SPH, temp
                  
+000005 e080      	ldi flag, 0
+                 
                  	// -------------------------------------
                  	; set B as output
                  	; set OG, R_CLK, S_CLK, SER as output
                  	; set PB4 as input
-000005 ef0f      	ldi temp, 0xFF
-                 	//cbr temp, PB4 ; (1<<PB4)
-000006 bb07      	out DDRB, temp
+000006 ef0f      	ldi temp, 0xFF
+                 	//cbr temp, PB4 ; (1<<PB4) // does not work somehow
+000007 bb07      	out DDRB, temp
                  
                  	// -------------------------------------
                  	; set SPI
@@ -862,32 +844,31 @@ C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warn
                  	; CPOL = 0
                  	; CPHA = 0
                  	; SCK clock = 1/2 XTAL
-000007 e500      	ldi temp, (1<<SPE) | (1<<MSTR)
-000008 b90d      	out SPCR, temp
+000008 e500      	ldi temp, (1<<SPE) | (1<<MSTR)
+000009 b90d      	out SPCR, temp
                  
-000009 e001      	ldi temp, (1<<SPI2X)
+00000a e001      	ldi temp, (1<<SPI2X)
                  	; double speed
-00000a b90e      	out SPSR, temp
+00000b b90e      	out SPSR, temp
                  	; send dummy-data to set SPIF
-00000b b90f      	out SPDR, temp
+00000c b90f      	out SPDR, temp
                  
                  	// -------------------------------------
                  	; set C as input
-00000c e000      	ldi temp, 0x00
-00000d bb04      	out DDRC, temp
+00000d e000      	ldi temp, 0x00
+00000e bb04      	out DDRC, temp
                  
                  /*
                  	// -------------------------------------
                  	; set D as input
                  	ldi temp, 0x00
                  */
-00000e ef0f      	ldi temp, 0xff
-00000f bb01      	out DDRD, temp
+00000f ef0f      	ldi temp, 0xff
+000010 bb01      	out DDRD, temp
                  
                  	// -------------------------------------
-                 	; set track counters to 0
-000010 e020      	ldi track_counter0, 0x00
-000011 e030      	ldi track_counter1, 0x00
+                 	; reset counter
+000011 d023      	rcall resetCounter
                  
                  /*
                  	// -------------------------------------
@@ -901,149 +882,245 @@ C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warn
                  	sei
                  */
                  
+                 	// -------------------------------------
                  	; all segments & dot on
-000012 ef0f      	ldi temp, 0b11111111
-000013 d013      	rcall transmitToShiftReg
-000014 d016      	rcall outputToShiftReg
+000012 e010      	ldi digitToPrint, 0
+000013 d03a      	rcall printDigit
                  
                  loop:
-                 	/*
-                 	### OLD STUFF START ###
-                 	;in r16, PIND
-                 	lsr r16		;lsl/r logical shift left/right
-                 	lsr r16
-                 	com r16		;invert
-                 	;out PORTB, r16
-                 	cbi PORTB, 7
-                 	cbi PORTB, 0	;clear bit i [0-7]
-                 	### OLD STUFF END ###
-                 	*/
+                 	// -------------------------------------
+                 	; ATmega8 has only 6 input pins for port c
+                 	; if (controller_input == 0b00111111) => Z=1 => branch to loop
+000014 b333      	in controller_input, PINC
+000015 333f      	cpi controller_input, 0b00111111
+000016 f3e9      	breq loop
                  
-                 	/*
-                 	; check if flag == 0xff => Z=1 => branch to equal
-                 	cpi flag, 0xff
-                 	breq output
-                 	*/
+                 	// -------------------------------------
+                 	; increase lap counts
+000017 ff30      	sbrs controller_input, PC0
+000018 d00a      	rcall incLabCouter0
                  
-                 	/* TEST
-                 	in temp_in, PINC
-                 	cpi temp_in, 0b00111111
-                 	breq test1 //11110000
-                 	rjmp test2 //10101010
-                 	*/
+000019 ff31      	sbrs controller_input, PC1
+00001a d011      	rcall incLabCouter1
                  
-000015 b343      	in temp_in, PINC
-000016 334f      	cpi temp_in, 0b00111111
-000017 f3e9      	breq loop
+00001b ff32      	sbrs controller_input, PC2
+00001c 0000      	nop
                  
-                 	/*
-                 		  (2)
-                 		|--b--|  0 = on
-                 		c     a  1 = off
-                 		|--f--|
-                 		h     e
-                 		|--g--|  d
+00001d ff33      	sbrs controller_input, PC3
+00001e c002      	rjmp resetAndSkipOutput
                  
-                 		    12
-                 		oooo++000
-                 		#########
-                 		# 1 # 2 #
-                 		#########
-                 		oooo00000
-                 		
-                 		7 6 5 4 3 2 1 0
-                 		h g f e d c b a
+00001f d01c      	rcall output
+000020 cff3      	rjmp loop
                  
-                 		0: hg_e_cba : 0b00101000
-                 		1: ___e___a : 0b11101110
-                 		2: hgf___ba : 0b00011100
-                 		3: _gfe__ba : 0b10001100
-                 		4: __fe_c_a : 0b11001010
-                 		5: _gfe_cb_ : 0b10001001
-                 		6: hgfe_cb_ : 0b00001001
-                 		7: ___e__ba : 0b11101100
-                 		8: hgfe_cba : 0b00001000
-                 		9: _gfe_cba : 0b10001000
-                 		.: ____d___ : 0b11110111
+                 resetAndSkipOutput:
+000021 d013      	rcall resetCounter
+000022 cff1      	rjmp loop
                  
-C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(179): warning: '/*' in comment 
-                 	/** /
-                 	sbrs temp_in, PC0
-                 	ldi temp, 0b00101000 // 0
-                 	sbrs temp_in, PC1
-                 	ldi temp, 0b11101110 // 1
-                 	sbrs temp_in, PC2
-                 	ldi temp, 0b00011100 // 2
-                 	sbrs temp_in, PC3
-                 	ldi temp, 0b10001100 // 3
-                 	sbrs temp_in, PC4
-                 	ldi temp, 0b11001010 // 4
-                 	sbrs temp_in, PC5
-                 	ldi temp, 0b10001001 // 5
-C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(192): warning: '/*' in comment 
-                 	/**/
+                 incLabCouter0:
+                 	; increase ones
+000023 9543      	inc lab_counter0_ones
+000024 304a      	cpi lab_counter0_ones, 10
                  
-                 	/**/
-000018 ff40      	sbrs temp_in, PC0
-000019 e009      	ldi temp, 0b00001001 // 6
-00001a ff41      	sbrs temp_in, PC1
-00001b ee0c      	ldi temp, 0b11101100 // 7
-00001c ff42      	sbrs temp_in, PC2
-00001d e008      	ldi temp, 0b00001000 // 8
-00001e ff43      	sbrs temp_in, PC3
-00001f e808      	ldi temp, 0b10001000 // 9
-000020 ff44      	sbrs temp_in, PC4
-000021 ef07      	ldi temp, 0b11110111 // .
-000022 ff45      	sbrs temp_in, PC5
-000023 e000      	ldi temp, 0b00000000 // all
-                 	/**/
+                 	; if counter != 10
+000025 f429      	brne exitIncLabCouter0
+                 	; else
+000026 e040      	ldi lab_counter0_ones, 0
                  
-                 	/*
-                 	sbrs temp_in, PC6
-                 	ldi temp, 0b10101010
-                 	sbrc temp_in, PC7
-                 	ldi temp, 0b10101010
-                 	*/
+                 	; increase tens
+000027 9553      	inc lab_counter0_tens
+000028 305a      	cpi lab_counter0_tens, 10
                  
-000024 d002      	rcall transmitToShiftReg
-000025 d005      	rcall outputToShiftReg
+                 	; if counter != 10
+000029 f409      	brne exitIncLabCouter0
+                 	; else
+00002a e050      	ldi lab_counter0_tens, 0
                  
-000026 cfee      	rjmp loop
+                 exitIncLabCouter0:
+00002b 9508      	ret
+                 
+                 incLabCouter1:
+                 	; increase ones
+00002c 9563      	inc lab_counter1_ones
+00002d 306a      	cpi lab_counter1_ones, 10
+                 
+                 	; if counter != 10
+00002e f429      	brne exitIncLabCouter1
+                 	; else
+00002f e060      	ldi lab_counter1_ones, 0
+                 
+                 	; increase tens
+000030 9573      	inc lab_counter1_tens
+000031 307a      	cpi lab_counter1_tens, 10
+                 
+                 	; if counter != 10
+000032 f409      	brne exitIncLabCouter1
+                 	; else
+000033 e070      	ldi lab_counter1_tens, 0
+                 
+                 exitIncLabCouter1:
+000034 9508      	ret
+                 
+                 resetCounter:
+                 	; set lab counters to 0
+000035 e041      	ldi lab_counter0_ones, 1
+000036 e052      	ldi lab_counter0_tens, 2
+000037 e063      	ldi lab_counter1_ones, 3
+000038 e074      	ldi lab_counter1_tens, 4
+                 
+000039 6081      	sbr flag, 1
+00003a d001      	rcall output
+00003b 9508      	ret
+                 
+                 output:
+00003c 2f17      	mov digitToPrint, lab_counter1_tens
+00003d d010      	rcall printDigit
+00003e ff80      	sbrs flag, 0
+00003f d022      	rcall wait
+                 
+000040 2f16      	mov digitToPrint, lab_counter1_ones
+000041 d00c      	rcall printDigit
+000042 ff80      	sbrs flag, 0
+000043 d01e      	rcall wait
+                 
+000044 2f15      	mov digitToPrint, lab_counter0_tens
+000045 d008      	rcall printDigit
+000046 ff80      	sbrs flag, 0
+000047 d01a      	rcall wait
+                 
+000048 2f14      	mov digitToPrint, lab_counter0_ones
+000049 d004      	rcall printDigit
+00004a ff80      	sbrs flag, 0
+00004b d016      	rcall wait
+                 
+00004c 7f8e      	cbr flag, 1
+00004d 9508      	ret
+                 
+                 printDigit:
+                 	// -------------------------------------
+                 	; set z-pointer to beginning of digit-table
+                 	; word-based, therefor byte-adress "digits" is multiplied by 2
+00004e ede8      	ldi ZL, LOW(digits * 2)
+00004f e0f0      	ldi ZH, HIGH(digits * 2)
+                 
+000050 2f01      	mov temp, digitToPrint      ; die wortweise Adressierung der Tabelle
+000051 0f01      	add temp, digitToPrint      ; berücksichtigen
+                 
+000052 0fe0      	add ZL, temp         ; und ausgehend vom Tabellenanfang
+000053 1df1      	adc ZH, zero          ; die Adresse des Code Bytes berechnen
+                 
+000054 95c8      	lpm                       ; dieses Code Byte in das Register r0 laden
+000055 2d20      	mov digitByte, r0
+                 
+000056 d002      	rcall transmitToShiftReg
+000057 d005      	rcall outputToShiftReg
+                 
+000058 9508      	ret
                  
                  transmitToShiftReg:
                  	; check if prev transmission is done
-000027 9b77      	sbis SPSR, SPIF
-000028 cffe      	rjmp transmitToShiftReg
+000059 9b77      	sbis SPSR, SPIF
+00005a cffe      	rjmp transmitToShiftReg
                  
                  	; write data to shift reg
-000029 b90f      	out SPDR, temp
+00005b b92f      	out SPDR, digitByte
                  
-00002a 9508      	ret
+00005c 9508      	ret
                  
                  outputToShiftReg:
                  	; check if prev transmission is done
-00002b 9b77      	sbis SPSR, SPIF
-00002c cffe      	rjmp outputToShiftReg
+00005d 9b77      	sbis SPSR, SPIF
+00005e cffe      	rjmp outputToShiftReg
                  
-00002d 9ac2      	sbi PORTB, PIN_R_CLK
-00002e 98c2      	cbi PORTB, PIN_R_CLK
+00005f 9ac2      	sbi PORTB, PIN_R_CLK
+000060 98c2      	cbi PORTB, PIN_R_CLK
                  
-00002f 9508      	ret
+000061 9508      	ret
+                 
+                 // brne: branch if z==0
+                 // breq: branch if z==1
+                 wait:
+000062 e694      	ldi r25, 100
+                 waitInner1:
+000063 e6a4      	ldi r26, 100
+                 waitInner2:
+000064 e6b4      	ldi r27, 100
+                 waitInner3:
+000065 95ba      	dec r27
+000066 f7f1      	brne waitInner3
+000067 95aa      	dec r26
+000068 f7d9      	brne waitInner2
+000069 959a      	dec r25
+00006a f7c1      	brne waitInner1
+00006b 9508      	ret
                  
                  /*
-                 output:
-                 	ldi flag, 0x00
-                 	rjmp loop
-                 
                  int0_handler:
                  	ldi flag, 0xff
-                 	inc track_counter0
+                 	inc lab_counter0
                  	reti
                  
                  int1_handler:
                  	ldi flag, 0xff
-                 	inc track_counter1
+                 	inc lab_counter1
                  	reti
+                 */
+                 
+                 digits:
+                 	/*
+                 		  (1)         (2)
+                 		|--a--|     |--a--|
+                 		f     b     f     b
+                 		|--g--|     |--g--|
+                 		e     c     e     c
+                 		|--d--|  h  |--d--|  h
+                 
+                 		         1 2
+                 		 o o o o + + 0 0 0
+                 		###################
+                 		#  (1)  ###  (2)  #
+                 		###################
+                 		 o o o o 0 0 0 0 0
+                 		
+                 		7 6 5 4 3 2 1 0
+                 		e d g c h f a b
+                 
+                 		0 = on
+                 		1 = off
+                 
+                 		0: ed_c_fab : 0b00101000
+                 		1: ___c___b : 0b11101110
+                 		2: edg___ab : 0b00011100
+                 		3: _dgc__ab : 0b10001100
+                 		4: __gc_f_b : 0b11001010
+                 		5: _dgc_fa_ : 0b10001001
+                 		6: edgc_fa_ : 0b00001001
+                 		7: ___c__ab : 0b11101100
+                 		8: edgc_fab : 0b00001000
+                 		9: _dgc_fab : 0b10001000
+                 		.: ____h___ : 0b11110111
+                 	*/
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(314): warning: .cseg .db misalignment - padding zero byte
+00006c 0028      	.db 0b00101000 // 0
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(315): warning: .cseg .db misalignment - padding zero byte
+00006d 00ee      	.db 0b11101110 // 1
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(316): warning: .cseg .db misalignment - padding zero byte
+00006e 001c      	.db 0b00011100 // 2
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(317): warning: .cseg .db misalignment - padding zero byte
+00006f 008c      	.db 0b10001100 // 3
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(318): warning: .cseg .db misalignment - padding zero byte
+000070 00ca      	.db 0b11001010 // 4
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(319): warning: .cseg .db misalignment - padding zero byte
+000071 0089      	.db 0b10001001 // 5
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(320): warning: .cseg .db misalignment - padding zero byte
+000072 0009      	.db 0b00001001 // 6
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(321): warning: .cseg .db misalignment - padding zero byte
+000073 00ec      	.db 0b11101100 // 7
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(322): warning: .cseg .db misalignment - padding zero byte
+000074 0008      	.db 0b00001000 // 8
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(323): warning: .cseg .db misalignment - padding zero byte
+000075 0088      	.db 0b10001000 // 9
+C:\Users\FatalDiskError\Projects\LapCounter\LapCounter\LapCounter.asm(324): warning: .cseg .db misalignment - padding zero byte
+000076 00f7      	.db 0b11110111 // .
 
 
 RESOURCE USE INFORMATION
@@ -1061,40 +1138,40 @@ counted separately from r26..r31 here.
 .dseg memory usage only counts static data declared with .byte
 
 "ATmega8" register use summary:
-r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   0 r5 :   0 r6 :   0 r7 :   0 
+r0 :   1 r1 :   1 r2 :   0 r3 :   0 r4 :   0 r5 :   0 r6 :   0 r7 :   0 
 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 r13:   0 r14:   0 r15:   0 
-r16:  23 r17:   0 r18:   1 r19:   1 r20:   8 r21:   0 r22:   0 r23:   0 
-r24:   0 r25:   0 r26:   0 r27:   0 r28:   0 r29:   0 r30:   0 r31:   0 
+r16:  18 r17:   7 r18:   2 r19:   6 r20:   5 r21:   5 r22:   5 r23:   5 
+r24:   7 r25:   2 r26:   2 r27:   2 r28:   0 r29:   0 r30:   2 r31:   2 
 x  :   0 y  :   0 z  :   0 
-Registers used: 4 out of 35 (11.4%)
+Registers used: 16 out of 35 (45.7%)
 
 "ATmega8" instruction use summary:
-.lds  :   0 .sts  :   0 adc   :   0 add   :   0 adiw  :   0 and   :   0 
+.lds  :   0 .sts  :   0 adc   :   1 add   :   2 adiw  :   0 and   :   0 
 andi  :   0 asr   :   0 bclr  :   0 bld   :   0 brbc  :   0 brbs  :   0 
 brcc  :   0 brcs  :   0 breq  :   1 brge  :   0 brhc  :   0 brhs  :   0 
-brid  :   0 brie  :   0 brlo  :   0 brlt  :   0 brmi  :   0 brne  :   0 
+brid  :   0 brie  :   0 brlo  :   0 brlt  :   0 brmi  :   0 brne  :   7 
 brpl  :   0 brsh  :   0 brtc  :   0 brts  :   0 brvc  :   0 brvs  :   0 
-bset  :   0 bst   :   0 cbi   :   1 cbr   :   0 clc   :   0 clh   :   0 
+bset  :   0 bst   :   0 cbi   :   1 cbr   :   1 clc   :   0 clh   :   0 
 cli   :   0 cln   :   0 clr   :   0 cls   :   0 clt   :   0 clv   :   0 
-clz   :   0 com   :   0 cp    :   0 cpc   :   0 cpi   :   1 cpse  :   0 
-dec   :   0 eor   :   0 fmul  :   0 fmuls :   0 fmulsu:   0 icall :   0 
-ijmp  :   0 in    :   1 inc   :   0 ld    :   0 ldd   :   0 ldi   :  16 
-lds   :   0 lpm   :   0 lsl   :   0 lsr   :   0 mov   :   0 movw  :   0 
-mul   :   0 muls  :   0 mulsu :   0 neg   :   0 nop   :   0 or    :   0 
-ori   :   0 out   :   9 pop   :   0 push  :   0 rcall :   4 ret   :   2 
-reti  :   0 rjmp  :   4 rol   :   0 ror   :   0 sbc   :   0 sbci  :   0 
-sbi   :   1 sbic  :   0 sbis  :   2 sbiw  :   0 sbr   :   0 sbrc  :   0 
-sbrs  :   6 sec   :   0 seh   :   0 sei   :   0 sen   :   0 ser   :   0 
+clz   :   0 com   :   0 cp    :   0 cpc   :   0 cpi   :   5 cpse  :   0 
+dec   :   3 eor   :   0 fmul  :   0 fmuls :   0 fmulsu:   0 icall :   0 
+ijmp  :   0 in    :   1 inc   :   4 ld    :   0 ldd   :   0 ldi   :  22 
+lds   :   0 lpm   :   3 lsl   :   0 lsr   :   0 mov   :   6 movw  :   0 
+mul   :   0 muls  :   0 mulsu :   0 neg   :   0 nop   :   1 or    :   0 
+ori   :   0 out   :   9 pop   :   0 push  :   0 rcall :  17 ret   :   8 
+reti  :   0 rjmp  :   6 rol   :   0 ror   :   0 sbc   :   0 sbci  :   0 
+sbi   :   1 sbic  :   0 sbis  :   2 sbiw  :   0 sbr   :   1 sbrc  :   0 
+sbrs  :   8 sec   :   0 seh   :   0 sei   :   0 sen   :   0 ser   :   0 
 ses   :   0 set   :   0 sev   :   0 sez   :   0 sleep :   0 spm   :   0 
 st    :   0 std   :   0 sts   :   0 sub   :   0 subi  :   0 swap  :   0 
 tst   :   0 wdr   :   0 
-Instructions used: 12 out of 110 (10.9%)
+Instructions used: 22 out of 110 (20.0%)
 
 "ATmega8" memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x000060     96      0     96    8192   1.2%
+[.cseg] 0x000000 0x0000ee    216     22    238    8192   2.9%
 [.dseg] 0x000060 0x000060      0      0      0    1024   0.0%
 [.eseg] 0x000000 0x000000      0      0      0     512   0.0%
 
-Assembly complete, 0 errors, 4 warnings
+Assembly complete, 0 errors, 11 warnings
